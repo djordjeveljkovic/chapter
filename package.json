@@ -8,6 +8,7 @@
     "dev": "astro dev --host 0.0.0.0",
     "check": "astro check",
     "build": "astro build && bun scripts/build-offline.mjs",
+    "build:pages": "SITE_BASE=/chapter/ bun run build && bun scripts/publish-pages.mjs",
     "package": "bun run build && bun scripts/package-site.mjs",
     "preview": "bun scripts/serve-preview.mjs",
     "test": "vitest run",

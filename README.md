@@ -109,7 +109,18 @@ Deploy `dist/` to an HTTPS static host. No backend, database server, API secret,
 
 ### GitHub Pages
 
-The repository includes a manual [GitHub Pages workflow](.github/workflows/pages.yml). To publish it, open **Settings → Pages**, set **Build and deployment → Source** to **GitHub Actions**, then run **Deploy GitHub Pages** from the **Actions** tab. The workflow builds with `SITE_BASE=/chapter/` so the app, service worker, and offline cache work at `https://djordjeveljkovic.github.io/chapter/`. Run the workflow again after later code changes. If you rename the repository, update `SITE_BASE` in the workflow to match its new path.
+GitHub Pages publishes from the `main` branch and `/` (repository root). The site address is `https://djordjeveljkovic.github.io/chapter/`: `/` selects the folder within the repository, while `/chapter/` is the project's URL path. The repository root contains the built `index.html`, assets, manifest, and service worker. `.nojekyll` keeps the `_astro/` asset directory available.
+
+After changing the app, refresh those root files and commit them with the source:
+
+```sh
+bun run build:pages
+git add .
+git commit -m "Update GitHub Pages site"
+git push
+```
+
+If you rename the repository, update `SITE_BASE` in `package.json` to match its new URL path.
 
 The checked-in `release/` directory is a separate, root-scoped static-host bundle. It is not used by GitHub Pages. Rebuild it with `bun run package` before uploading to a different host.
 
