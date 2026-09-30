@@ -1,0 +1,23 @@
+---
+import '../styles/global.css';
+interface Props { title?: string; description?: string }
+const { title = 'Chapter — A little space for big ideas', description = 'Your own quiet reading library. Download Markdown books from GitHub, read offline, and create the book you wish existed.' } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+---
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#f8f7f2" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="icon" type="image/svg+xml" href={`${base}icon.svg`} />
+    <link rel="apple-touch-icon" href={`${base}icon-192.png`} />
+    <link rel="manifest" href={`${base}manifest.webmanifest`} />
+    <title>{title}</title>
+  </head>
+  <body><slot /></body>
+</html>

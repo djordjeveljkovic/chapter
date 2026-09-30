@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import App from '../components/App';
+---
+<Layout>
+  <App client:only="react">
+    <main slot="fallback" class="page startup"><span class="footer-brand">chapter.</span><p>Opening your little corner of knowledge…</p></main>
+  </App>
+  <noscript><main class="page"><h1>A little space for big ideas.</h1><p>Enable JavaScript to open your local reading library. You can still read the <a href={`${import.meta.env.BASE_URL}format/`}>book format guide</a>.</p></main></noscript>
+</Layout>

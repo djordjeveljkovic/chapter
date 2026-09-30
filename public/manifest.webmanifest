@@ -1,0 +1,12 @@
+{
+  "name": "Chapter — Your reading library",
+  "short_name": "Chapter",
+  "description": "A little space for big ideas. Your GitHub books, ready offline.",
+  "start_url": "./#library",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8f7f2",
+  "theme_color": "#364838",
+  "lang": "en",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

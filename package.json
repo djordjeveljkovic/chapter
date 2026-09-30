@@ -1,0 +1,40 @@
+{
+  "name": "chapter-github-reader",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.2",
+  "scripts": {
+    "dev": "astro dev --host 0.0.0.0",
+    "check": "astro check",
+    "build": "astro build && bun scripts/build-offline.mjs",
+    "package": "bun run build && bun scripts/package-site.mjs",
+    "preview": "bun scripts/serve-preview.mjs",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@astrojs/react": "7.0.0",
+    "astro": "7.3.5",
+    "dompurify": "3.4.16",
+    "fflate": "0.8.3",
+    "highlight.js": "11.12.0",
+    "idb": "8.0.3",
+    "lucide-react": "1.49.0",
+    "marked": "18.0.14",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.6.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "fake-indexeddb": "6.2.5",
+    "sharp": "0.35.5",
+    "typescript": "6.0.3",
+    "vitest": "5.0.2"
+  }
+}

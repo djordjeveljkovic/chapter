@@ -1,0 +1,20 @@
+{
+  "builtAt": "2026-09-30T04:52:06.744Z",
+  "scope": "/",
+  "archive": "chapter-site.zip",
+  "sha256": "a7c1094a197a87ea1804eb822ce5f4d99f055583eb96d9c14f1b0dd5c1b1742c",
+  "files": [
+    "_astro/App.BOeKMGF8.js",
+    "_astro/Layout.B2ZT_45t.css",
+    "_astro/client.CXM7gXZ1.js",
+    "_astro/react.yIOJJ3r4.js",
+    "format/index.html",
+    "icon-192.png",
+    "icon-512.png",
+    "icon.svg",
+    "index.html",
+    "manifest.webmanifest",
+    "sw.js"
+  ],
+  "offlineArtifactsVerified": 10
+}

@@ -1,0 +1,37 @@
+# Completion evidence
+
+The project is not fully accepted until the real Android Chrome checklist has a recorded result. This inventory separates implemented behavior from outstanding verification. Run the commands in README after code changes; earlier passing runs do not prove later changes.
+
+| Requirement                                                                                                  | Implementation                                                                         | Verification                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Static Astro, React islands, TypeScript, Bun, mobile-first design                                            | `astro.config.mjs`, `src/pages`, `src/components`, `src/styles/global.css`, `bun.lock` | Astro check, production build; responsive Chromium tests at 360–1440px                                                    |
+| Whole-book IndexedDB persistence, drafts, personal reading data, preferences, briefs, updates                | `src/lib/types.ts`, `src/lib/storage.ts`                                               | Unit storage/transfer and browser offline tests                                                                           |
+| Full app shell, compiled assets, icons, manifest, docs offline; scoped worker updates                        | `scripts/build-offline.mjs`, `src/lib/offline.ts`                                      | `offline-audit.spec.ts` tests integrity, failed updates, explicit activation, origin cache isolation, offline reopening   |
+| Public GitHub import, default/custom branch/root, commit-pinned tree/raw files, bounded concurrency          | `src/lib/github.ts`                                                                    | `transfers.test.ts`, `audit.test.ts`; snapshot URLs, rate limits, truncation, timeout, cancellation, unchanged blob reuse |
+| Book/volume/chapter format, numerical ordering, front matter, authoring exclusion, actionable validation     | `src/lib/format.ts`                                                                    | `format.test.ts`, `audit.test.ts`; actual PHP fixture import in `app.spec.ts`                                             |
+| Preview, sample repository, sizes, findings, pause/retry/resume, quota safety                                | `src/components/App.tsx`, `src/lib/github.ts`                                          | Transfer failures/resume/quota unit tests and production-browser import/update tests                                      |
+| Safe GFM, code highlighting, tables, local images, links/anchors, remote placeholders                        | `src/lib/render.ts`, `src/components/Reader.tsx`                                       | Browser script rejection/local image/anchor/code/table tests; parser image/link tests                                     |
+| Navigation, search, completion, passage bookmarks, text-location resume                                      | `src/components/Reader.tsx`                                                            | `app.spec.ts`, `reader-audit.spec.ts`; exact passage visibility and offline state                                         |
+| Passage notes with creation, editing, deletion, return to passage, offline persistence                       | Reader, reading schema, backups, edition migration                                     | New notes unit/browser regression checks; hardware result pending                                                         |
+| Scroll/pages, typography, three themes, rotation/reflow, independent code/table scroll, touch/key controls   | Reader and global styles                                                               | `reader-audit.spec.ts`; exact text-range visibility, real touch events, focus traps, reduced motion                       |
+| Hourly automatic/manual update checks, saved/latest commits, check date, staged atomic editions, orphan data | App, GitHub loader, storage                                                            | Browser failed/successful update tests; atomic rollback and migration unit tests                                          |
+| Versioned complete backup, validation before writes, consistent snapshot, atomic restore                     | `src/lib/backup.ts`                                                                    | Image/personal-data/legacy identity/invalid import/concurrent snapshot/notes tests                                        |
+| Saved authoring brief, seven tailored prompts, planned/written distinction, continuation state, ZIP scaffold | `src/lib/authoring.ts`, `src/components/Authoring.tsx`                                 | Format/audit tests and authoring/ZIP/GitHub validation browser tests                                                      |
+| Portable HTTPS static deployment and base-path install/offline support                                       | README, manifest/worker generator                                                      | Isolated `/chapter/` production build and offline audit                                                                   |
+| Entire reference book: 308 chapters in 21 volumes, correct order, no `_ai` entries                           | Shared parser/import flow                                                              | `BOOK_REFERENCE_DIR=/tmp/chapter-reference bun run test:e2e`                                                              |
+| Actual Android Chrome installation, close/reopen in airplane mode, reading and personal data                 | `docs/android-acceptance.md`                                                           | **Pending user's phone test**                                                                                             |
+
+## Commands
+
+Latest verification on September 30, 2026: **45 unit tests and all 18 production-browser tests passed**, including the full reference-book import. Astro check reported zero errors and warnings (one deprecated browser API compatibility hint); the production build passed. The separate `/chapter/` deployment audit also passed all five PWA checks. The hardware result is still pending.
+
+The portable `release/chapter-site.zip` was rebuilt with `bun run package` and independently extracted in memory: all 11 files match `dist/` byte for byte, all 10 offline artifacts match the worker's SHA-256 inventory, and the archive checksum matches `release/deployment.json`. The shell remains `ffb6e9375eacb3cd`, the same build that passed the production suite. The archive is ready for an HTTPS host; the hosting preference and actual Android result remain external dependencies.
+
+```sh
+ASTRO_TELEMETRY_DISABLED=1 bun run check
+bun run test
+ASTRO_TELEMETRY_DISABLED=1 bun run build
+BOOK_REFERENCE_DIR=/tmp/chapter-reference bun run test:e2e
+```
+
+The reader makes no AI API calls and uses no accounts or sync service. PDF/EPUB import, arbitrary repository layouts, and shared annotation services are outside the approved scope. Passage notes were subsequently added at the user's request.
