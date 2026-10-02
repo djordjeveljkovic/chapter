@@ -137,12 +137,18 @@ export function parseChapter(path: string, text: string, sha = ""): Chapter {
     throw new Error("Chapter title cannot be empty.");
   if (
     meta.status !== undefined &&
-    !["planned", "in-progress", "review", "complete", "unspecified"].includes(
-      String(meta.status),
-    )
+    ![
+      "planned",
+      "draft",
+      "drafting",
+      "in-progress",
+      "review",
+      "complete",
+      "unspecified",
+    ].includes(String(meta.status))
   )
     throw new Error(
-      "Chapter status must be planned, in-progress, review, or complete.",
+      "Chapter status must be planned, draft, drafting, in-progress, review, or complete.",
     );
   const segments = path.split("/");
   const filename = segments.at(-1)!;
@@ -346,7 +352,7 @@ export function validateDocuments(
       identities.add(`${chapter.volume}:${chapter.id}`);
       numbers.add(`${chapter.volume}:${chapter.number}`);
       chapters.push(chapter);
-      if (/^(planned|in-progress|review)$/.test(chapter.status))
+      if (/^(planned|draft|drafting|in-progress|review)$/.test(chapter.status))
         issues.push({
           severity: "warning",
           path,
@@ -439,7 +445,7 @@ export function validateDocuments(
         : `${target.path}/README.md`;
       if (!known.has(resolved))
         issues.push({
-          severity: "error",
+          severity: link.image ? "error" : "warning",
           path,
           message: `Broken internal link: ${link.href}`,
         });
@@ -459,7 +465,7 @@ export function validateDocuments(
         }
         if (!slugs.includes(hash))
           issues.push({
-            severity: "error",
+            severity: "warning",
             path,
             message: `Missing heading anchor: ${link.href}`,
           });

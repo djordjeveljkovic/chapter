@@ -69,7 +69,7 @@ summary: ../../_ai/chapter-summaries/001-introduction-summary.md
 Book prose goes here.
 ```
 
-Numeric metadata determines chapter ordering; numbered folders/files provide a fallback. Titles can fall back to a top-level heading. Slugs are unique within a volume; the reader qualifies stored identities by volume. Repeated slugs across volumes produce a note, while duplicate slugs within a volume block import. Missing metadata, unresolved internal links, and conflicting ordering are reported before an edition is activated.
+Numeric metadata determines chapter ordering; numbered folders/files provide a fallback. Titles can fall back to a top-level heading. Slugs are unique within a volume; the reader qualifies stored identities by volume. Repeated slugs across volumes produce a note, while duplicate slugs within a volume block import. Links to missing chapters or heading anchors are warnings: available chapters can still be imported, even when the book is unfinished. The planned, draft, drafting, in-progress, and review statuses are also allowed with warnings. Invalid metadata, missing local images, and conflicting ordering block import.
 
 Use Markdown links and repository-local images. Raw HTML is displayed as text; JavaScript and MDX are never executed. External images are shown as offline-unavailable placeholders. Source links outside the downloaded chapters are accessible through the repository link. The generated template contains planned placeholders, not finished book content; use the outline, writing, verification, and review prompts to complete it.
 

@@ -7,7 +7,7 @@ import {
   type Book,
   type Discovery,
 } from "../../src/lib/types";
-import { sourceId, validateDocuments } from "../../src/lib/format";
+import { isChapter, sourceId, validateDocuments } from "../../src/lib/format";
 import { discover, prepareBook } from "../../src/lib/github";
 import {
   db,
@@ -141,6 +141,58 @@ describe("GitHub transfers", () => {
     await saveBook(book);
     expect(await loadDraft(id)).toBeUndefined();
     expect((await listBooks())[0].commit).toBe(commit);
+  });
+  it("imports unfinished books with missing chapter links and draft statuses", async () => {
+    const chapterPaths = entries
+      .filter((entry) => isChapter(entry.path, "book"))
+      .map((entry) => entry.path);
+    const missing = chapterPaths[1];
+    const documents = { ...files };
+    delete documents[missing];
+    for (const [index, status] of ["draft", "drafting"].entries()) {
+      const path = chapterPaths[index + 2];
+      documents[path] = documents[path].replace(
+        "status: planned", `status: ${status}`,
+      );
+    }
+    documents["book/README.md"] +=
+      `\n[Unwritten chapter](${missing.slice("book/".length)})\n[Unwritten volume](volumes/03-unwritten/)\n[Future heading](volumes/01-volume-1/001-chapter-1.md#future-heading)`;
+    const fetched: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const path = decodeURIComponent(url.split(`/${commit}/`)[1]);
+        fetched.push(path);
+        return new Response(documents[path]);
+      }),
+    );
+    const book = await prepareBook(
+      {
+        ...discovery,
+        entries: entries.filter((entry) => entry.path !== missing),
+        chapterPaths: chapterPaths.filter((path) => path !== missing),
+        index: documents["book/README.md"],
+      },
+      vi.fn(),
+      new AbortController().signal,
+    );
+    expect(book.chapters).toHaveLength(8);
+    expect(book.chapters.map((chapter) => chapter.status)).toEqual(
+      expect.arrayContaining(["draft", "drafting"]),
+    );
+    expect(book.issues.every((issue) => issue.severity === "warning")).toBe(true);
+    expect(book.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        message: expect.stringContaining("Broken internal link:"),
+      }),
+      expect.objectContaining({
+        message: expect.stringContaining("Missing heading anchor:"),
+      }),
+    ]));
+    expect(fetched).not.toContain(missing);
+    await saveBook(book);
+    expect((await listBooks())[0].chapters).toHaveLength(8);
+    expect(validateBackup(await exportBackup()).books[0].chapters).toHaveLength(8);
   });
   it("keeps the installed edition and saved reading position when an update is aborted", async () => {
     const old = makeBook();

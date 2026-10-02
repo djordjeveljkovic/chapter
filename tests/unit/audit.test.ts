@@ -416,17 +416,18 @@ describe("backup portability and concurrent snapshots", () => {
     expect(await loadUpdates()).toEqual([]);
     expect((await loadReading(id)).bookmarks).toEqual([]);
   });
-  it("rejects broken anchors and conflicting front matter before restoring a book", () => {
-    for (const body of [
-      files[chapterPath] + "\n[Broken](#absent)",
-      files[chapterPath].replace("volume: 1", "volume: nope"),
-    ]) {
-      const book = makeBook();
-      book.documents[chapterPath] = body;
-      expect(() => validateBackup(backupOf(book))).toThrow(
-        "invalid chapter metadata",
-      );
-    }
+  it("restores books with broken anchor warnings and rejects invalid metadata", () => {
+    const book = makeBook();
+    book.documents[chapterPath] += "\n[Broken](#absent)";
+    expect(validateBackup(backupOf(book)).books[0].issues).toContainEqual({
+      severity: "warning",
+      path: chapterPath,
+      message: "Missing heading anchor: #absent",
+    });
+    book.documents[chapterPath] = files[chapterPath].replace(
+      "volume: 1", "volume: nope",
+    );
+    expect(() => validateBackup(backupOf(book))).toThrow("invalid chapter metadata");
   });
   it("rolls back all backup writes after a quota failure while preserving existing preferences and drafts", async () => {
     const installed = makeBook();

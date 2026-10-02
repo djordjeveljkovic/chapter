@@ -138,6 +138,40 @@ async function storedBooks(page: Page) {
   });
 }
 
+test("unfinished books import available chapters with warnings", async ({ page }) => {
+  const files = fixture();
+  const first = "book/volumes/01-foundations/001-first-steps.md";
+  files[first] =
+    files[first].replace("status: complete", "status: draft") +
+    "\n[Unwritten chapter](004-unwritten.md)";
+  const second = "book/volumes/01-foundations/002-going-deeper.md";
+  files[second] = files[second].replace("status: complete", "status: drafting");
+  files["book/README.md"] += "\n[Future volume](volumes/02-future/README.md)";
+  const github = await mockGitHub(page, files);
+  await page.goto("/");
+  await expect(page.getByText("Offline app ready")).toBeVisible();
+  await importFixture(page);
+  const [book] = (await storedBooks(page)) as {
+    chapters: { status: string }[];
+    issues: { severity: string; message: string }[];
+  }[];
+  expect(book.chapters).toHaveLength(3);
+  expect(book.chapters.map((chapter) => chapter.status)).toEqual([
+    "draft",
+    "drafting",
+    "complete",
+  ]);
+  expect(book.issues.every((issue) => issue.severity === "warning")).toBe(true);
+  expect(book.issues.some((issue) =>
+    issue.message.includes("004-unwritten.md"),
+  )).toBe(true);
+  expect(github.requests.some((path) =>
+    path.includes("004-unwritten.md"),
+  )).toBe(false);
+  await page.getByRole("button", { name: "Start reading" }).click();
+  await expect(page.locator(".book-content")).toContainText("Learning is a journey");
+});
+
 test("phone library imports a complete snapshot and reopens its reader offline", async ({
   page,
   context,

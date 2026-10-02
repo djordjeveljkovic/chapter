@@ -135,13 +135,14 @@ describe("compatible Markdown books", () => {
       resolvePath("book/a.md", "https://example.com/image.png"),
     ).toBeNull();
   });
-  it("reports broken links and offline external image warnings", () => {
+  it("warns about broken links and external images while rejecting missing local images", () => {
     const parsed = validate({
       "book/README.md": "# Book",
       "book/volumes/01-one/001-one.md":
-        "# First\n[missing](missing.md)\n![external](https://example.com/p.png)",
+        "# First\n[missing](missing.md)\n![local](missing.png)\n![external](https://example.com/p.png)",
     });
     expect(parsed.report.issues.map((i) => i.severity)).toEqual([
+      "warning",
       "error",
       "warning",
     ]);
