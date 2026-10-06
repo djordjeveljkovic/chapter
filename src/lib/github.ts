@@ -9,6 +9,7 @@ import {
   resolvePath,
   sourceId,
   validateDocuments,
+  parseGeneralDocuments,
 } from "./format";
 import { loadDraft, saveDraft } from "./storage";
 import type {
@@ -70,7 +71,7 @@ async function response(
         throw new Error(
           token
             ? "GitHub could not find this repository, branch, or file, or the saved token cannot access it. Check the URL, branch, selected repositories, and Contents read permission."
-            : "GitHub could not find this public repository, branch, or file. If it is private, save a fine-grained token with Contents read permission in Library settings.",
+            : "GitHub could not find this public repository, branch, or file. Check the URL and branch. If it is private, save a fine-grained token with Contents read permission in Library settings.",
         );
       if (res.status >= 500 && attempt < 2) continue;
       throw new Error(
@@ -151,6 +152,8 @@ export async function discover(
     description: string;
     private: boolean;
   }>(endpoint(repo), signal, token);
+  if (metadata.private && !token)
+    throw new Error("Private repositories require a saved GitHub token with Contents read permission; public repositories need no token.");
   const source: Source = {
     ...repo,
     branch: branch.trim() || metadata.default_branch,
@@ -167,21 +170,17 @@ export async function discover(
       "This repository is too large for a complete GitHub tree response. Put the book in a smaller dedicated repository.",
     );
   const entries = tree.tree.filter((e) => e.type === "blob");
+  const prefix = source.root ? `${source.root}/` : "";
   const chapterEntries = entries.filter((e) => isChapter(e.path, source.root));
-  if (
-    !chapterEntries.length ||
-    !entries.some((e) => e.path === `${source.root}/README.md`)
-  ) {
+  const recognized = chapterEntries.length > 0 && entries.some((e) => e.path === `${prefix}README.md`);
+  const readableEntries = entries.filter((e) => e.path.startsWith(prefix) && /\.(md|markdown|txt|rst)$/i.test(e.path) && !/(^|\/)README\.(md|markdown|txt|rst)$/i.test(e.path) && !e.path.split("/").some((part) => part.startsWith("_")));
+  if (!recognized && !readableEntries.length) {
     throw new Error(
-      `No compatible book found in ${source.root}/. It needs README.md and Markdown chapters under volumes/. See the Book format guide.`,
+      `No readable Markdown, text, or RST files found in ${source.root || "repository root"}.`,
     );
   }
-  const indexEntry = entries.find(
-    (entry) => entry.path === `${source.root}/README.md`,
-  )!;
-  const index = await (
-    await readFile(source, commit, indexEntry, signal, token)
-  ).text();
+  const indexEntry = entries.find((entry) => entry.path === `${prefix}README.md`);
+  const index = indexEntry ? await (await readFile(source, commit, indexEntry, signal, token)).text() : "";
   const indexDocument = frontMatter(index);
   const title =
     typeof indexDocument.meta.title === "string" &&
@@ -192,20 +191,23 @@ export async function discover(
     id: sourceId(source),
     source,
     commit,
-    title,
+    title: index ? title : source.repo,
     description: metadata.description || "",
     entries,
-    chapterPaths: chapterEntries.map((e) => e.path),
-    volumes: new Set(
+    chapterPaths: (recognized ? chapterEntries : readableEntries).map((e) => e.path),
+    volumes: recognized ? new Set(
       chapterEntries.map((e) => e.path.split("/").slice(0, -1).join("/")),
-    ).size,
+    ).size : new Set(readableEntries.map((e) => e.path.split("/").slice(0, -1).join("/"))).size,
     bytes: entries
       .filter(
         (e) =>
-          e.path.startsWith(`${source.root}/`) && !e.path.includes("/_ai/"),
+          e.path.startsWith(source.root ? `${source.root}/` : "") && !e.path.includes("/_ai/"),
       )
       .reduce((sum, e) => sum + (e.size || 0), 0),
     index,
+    generalLayout: !recognized,
+    readablePaths: (recognized ? chapterEntries : readableEntries).map(e => e.path),
+    selectedPaths: (recognized ? chapterEntries : readableEntries).map(e => e.path),
   };
 }
 
@@ -224,15 +226,15 @@ export async function prepareBook(
       : {
           id: discovery.id,
           discovery,
-          documents: {
-            [`${discovery.source.root}/README.md`]: discovery.index,
-          },
+          documents: discovery.index ? {
+            [`${discovery.source.root ? `${discovery.source.root}/` : ""}README.md`]: discovery.index,
+          } : {},
           assets: [],
         };
   const wanted = discovery.entries.filter(
     (e) =>
-      e.path.startsWith(`${discovery.source.root}/`) &&
-      /\.md$/i.test(e.path) &&
+      e.path.startsWith(discovery.source.root ? `${discovery.source.root}/` : "") &&
+      (discovery.generalLayout ? ((discovery.selectedPaths || discovery.readablePaths || []).includes(e.path) || /(^|\/)README\.(md|markdown|txt|rst)$/i.test(e.path)) : /\.md$/i.test(e.path)) &&
       !e.path.includes("/_ai/"),
   );
   for (const entry of wanted) {
@@ -270,7 +272,10 @@ export async function prepareBook(
     total: wanted.length,
     label: "Validating metadata and links",
   });
-  const { chapters, report } = validateDocuments(
+  const { chapters, report } = discovery.generalLayout ? {
+    chapters: parseGeneralDocuments(draft.documents, discovery.selectedPaths || discovery.readablePaths || [], discovery.entries),
+    report: { issues: [], chapters: (discovery.selectedPaths || discovery.readablePaths || []).length, volumes: discovery.volumes },
+  } : validateDocuments(
     draft.documents,
     discovery.entries,
     discovery.source.root,
@@ -355,6 +360,8 @@ export async function prepareBook(
     issues: report.issues,
     downloadedAt: new Date().toISOString(),
     bytes,
+    selectedPaths: discovery.selectedPaths || discovery.readablePaths || [],
+    generalLayout: !!discovery.generalLayout,
   };
 }
 

@@ -277,6 +277,7 @@ describe("portable backups", () => {
       completed: [book.chapters[0].id],
     });
     const backup = await exportBackup();
+    expect(backup.version).toBe(2);
     expect(
       validateBackup(JSON.parse(JSON.stringify(backup))).books[0].chapters,
     ).toHaveLength(9);
@@ -313,7 +314,7 @@ describe("portable backups", () => {
     expect(bad.books[0].chapters[0].title).toBe("Untrusted derived title");
     expect((await listBooks())[0].title).toBe("Tests");
     for (const update of [
-      { version: 2 },
+      { version: 3 },
       {
         reading: [
           { bookId: id, completed: [], bookmarks: [], location: { block: -1 } },

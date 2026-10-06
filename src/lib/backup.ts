@@ -16,11 +16,12 @@ import {
   resolvePath,
   sourceId,
   validateDocuments,
+  parseGeneralDocuments,
 } from "./format";
 
 export interface Backup {
   format: "chapter-backup";
-  version: 1;
+  version: 1 | 2;
   exportedAt: string;
   books: Book[];
   reading: ReadingState[];
@@ -37,7 +38,7 @@ export async function exportBackup(): Promise<Backup> {
   );
   const backup: Backup = {
     format: "chapter-backup",
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     books: await tx.objectStore("books").getAll(),
     reading: await tx.objectStore("reading").getAll(),
@@ -76,7 +77,7 @@ export function validateBackup(value: unknown): Backup {
   if (
     !object(value) ||
     value.format !== "chapter-backup" ||
-    value.version !== 1 ||
+    ![1, 2].includes(Number(value.version)) ||
     !Array.isArray(value.books) ||
     !Array.isArray(value.reading) ||
     !Array.isArray(value.updates)
@@ -150,7 +151,10 @@ export function validateBackup(value: unknown): Backup {
       .concat(typed.assets.map((a) => a.path))
       .map((path) => ({ path, type: "blob", sha: "" }));
     // Rebuild derived chapter HTML/text from trusted Markdown rather than trusting imported chapter objects.
-    const parsed = validateDocuments(
+    const parsed = typed.generalLayout ? {
+      chapters: parseGeneralDocuments(typed.documents, typed.selectedPaths || typed.chapters.map(c => c.path), entries),
+      report: { issues: [], chapters: typed.chapters.length, volumes: 0 },
+    } : validateDocuments(
       typed.documents,
       entries,
       typed.source.root,

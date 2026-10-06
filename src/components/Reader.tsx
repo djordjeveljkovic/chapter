@@ -656,7 +656,7 @@ export default function Reader({
         <div className="reader-book-title">
           <span>{book.title}</span>
           <small>
-            Volume {chapter.volume} · Chapter {chapter.number}
+            {chapter.format ? chapter.collectionPath || "Repository root" : `Volume ${chapter.volume} · Chapter ${chapter.number}`}
           </small>
         </div>
         <div className="reader-tools">
@@ -851,9 +851,17 @@ export default function Reader({
                         reading.completed.includes(c.id),
                       ).length
                     }{" "}
-                    of {book.chapters.length} chapters completed
+                    of {book.chapters.length} {book.generalLayout ? "items" : "chapters"} completed
                   </p>
-                  {volumes.map((volume) => (
+                    {book.generalLayout ? book.chapters.map((c) => (
+                      <div className="toc-volume" key={c.id}>
+                        <h3>{c.collectionPath || "Repository root"}</h3>
+                        {c.collectionDescription && !book.chapters.some(other => other.id !== c.id && other.collectionPath === c.collectionPath && book.chapters.indexOf(other) < book.chapters.indexOf(c)) && <p className="small muted">{c.collectionDescription}</p>}
+                        <button key={c.id} onClick={() => selectChapter(c)} aria-current={c.id === chapterId ? "location" : undefined} className={`toc-chapter ${c.id === chapterId ? "active" : ""}`}>
+                          <span>•</span><span>{c.title}</span>{reading.completed.includes(c.id) && <Check size={15} />}
+                        </button>
+                      </div>
+                    )) : volumes.map((volume) => (
                     <div className="toc-volume" key={volume}>
                       <h3>
                         Volume {volume} ·{" "}

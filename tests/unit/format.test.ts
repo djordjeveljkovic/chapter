@@ -8,6 +8,7 @@ import {
   parseRepoUrl,
   resolvePath,
   validateDocuments,
+  parseGeneralDocuments,
 } from "../../src/lib/format";
 import { scaffoldFiles, scaffoldZip, promptFor } from "../../src/lib/authoring";
 import { defaultBrief } from "../../src/lib/types";
@@ -23,6 +24,16 @@ const validate = (documents: Record<string, string>) =>
   );
 
 describe("compatible Markdown books", () => {
+  it("keeps general repository paths, text format and folder descriptions", () => {
+    const chapters = parseGeneralDocuments({
+      "guide/README.md": "Collection notes",
+      "guide/01-start.md": "# Start",
+      "guide/raw.rst": "<script>alert(1)</script>",
+    }, ["guide/01-start.md", "guide/raw.rst"], []);
+    expect(chapters.map(c => c.path)).toEqual(["guide/01-start.md", "guide/raw.rst"]);
+    expect(chapters[0]).toMatchObject({ title: "01-start.md", collectionPath: "guide", collectionDescription: "Collection notes", format: "markdown" });
+    expect(chapters[1]).toMatchObject({ format: "text", markdown: "<script>alert(1)</script>" });
+  });
   it("parses a real source PHP chapter and removes authoring metadata", () => {
     const text = readFileSync(
       new URL("./fixtures/php-chapter.md", import.meta.url),

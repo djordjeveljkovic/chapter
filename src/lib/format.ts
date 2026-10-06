@@ -62,6 +62,7 @@ export function parseRepoUrl(input: string): { owner: string; repo: string } {
 
 export function normalizeRoot(root: string): string {
   const clean = root.trim().replace(/^\/+|\/+$/g, "");
+  if (!clean) return "";
   if (
     !clean ||
     clean.includes("\\") ||
@@ -69,6 +70,23 @@ export function normalizeRoot(root: string): string {
   )
     throw new Error("Enter a repository-relative book folder, such as book.");
   return clean;
+}
+
+export function parseGeneralDocuments(documents: Record<string, string>, paths: string[], entries: TreeEntry[]): Chapter[] {
+  return paths.map((path, index) => {
+    const ext = path.split(".").at(-1)?.toLowerCase() || "";
+    const text = documents[path] || "";
+    const markdown = ext === "md" || ext === "markdown";
+    const parts = path.split("/");
+    return {
+      id: `file:${path}`, path, title: parts.at(-1)!, volume: index + 1,
+      volumeTitle: parts.slice(0, -1).join("/") || "Repository",
+      number: index + 1, status: "unspecified", markdown: text,
+      plainText: text, blobSha: entries.find((e) => e.path === path)?.sha || "",
+      collectionPath: parts.slice(0, -1).join("/"), format: markdown ? "markdown" : "text",
+      collectionDescription: ["md", "markdown", "txt", "rst"].map(ext => documents[`${parts.slice(0, -1).join("/") ? `${parts.slice(0, -1).join("/")}/` : ""}README.${ext}`]).find(Boolean) || "",
+    };
+  });
 }
 
 export function frontMatter(markdown: string): {

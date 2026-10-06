@@ -33,6 +33,7 @@ const escape = (text: string) =>
     .replace(/"/g, "&quot;");
 
 export function renderChapter(book: Book, chapter: Chapter): string {
+  if (chapter.format === "text") return `<pre class="plain-document">${escape(chapter.markdown)}</pre>`;
   const renderer = new Renderer();
   renderer.html = ({ text }) => `<pre class="raw-markup">${escape(text)}</pre>`;
   renderer.code = ({ text, lang }) => {

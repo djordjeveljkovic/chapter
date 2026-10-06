@@ -112,7 +112,8 @@ export default function App() {
   const [importOpen, setImportOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [branch, setBranch] = useState("");
-  const [root, setRoot] = useState("book");
+  const [root, setRoot] = useState("");
+  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [preview, setPreview] = useState<Discovery | null>(null);
   const [transfer, setTransfer] = useState<TransferProgress | null>(null);
   const [busy, setBusy] = useState(false);
@@ -287,7 +288,7 @@ export default function App() {
   const openImport = (sample = false) => {
     setUrl(sample ? SAMPLE_URL : "");
     setBranch("");
-    setRoot("book");
+    setRoot("");
     setPreview(null);
     setImportIssues([]);
     setTransfer(null);
@@ -300,14 +301,14 @@ export default function App() {
     setPreview(null);
     setImportIssues([]);
     try {
-      const snapshot = await discover(
+      let snapshot = await discover(
         url,
         branch,
         root,
         controller.signal,
         githubToken,
       );
-      if (!controller.signal.aborted) setPreview(snapshot);
+      if (!controller.signal.aborted) { setPreview(snapshot); setSelectedPaths(snapshot.selectedPaths || []); }
     } catch (error) {
       if ((error as Error).name !== "AbortError")
         notify((error as Error).message, true);
@@ -316,6 +317,7 @@ export default function App() {
     }
   };
   const download = async (snapshot: Discovery) => {
+    snapshot = { ...snapshot, selectedPaths };
     const controller = new AbortController();
     abort.current = controller;
     setBusy(true);
@@ -426,14 +428,18 @@ export default function App() {
     setImportOpen(true);
     setBusy(true);
     try {
-      const snapshot = await discover(
+      let snapshot = await discover(
         repoURL(book.source),
         book.source.branch,
         book.source.root,
         controller.signal,
         githubToken,
       );
-      if (!controller.signal.aborted) setPreview(snapshot);
+      if (!controller.signal.aborted) {
+        const chosen = new Set(book.selectedPaths || book.chapters.map(c => c.path));
+        snapshot = { ...snapshot, selectedPaths: (snapshot.readablePaths || []).filter(path => chosen.has(path)) };
+        setPreview(snapshot); setSelectedPaths(snapshot.selectedPaths || []);
+      }
     } catch (error) {
       if ((error as Error).name !== "AbortError")
         notify((error as Error).message, true);
@@ -768,6 +774,7 @@ export default function App() {
                       disabled={!online || busy}
                       onClick={() => {
                         setPreview(draft.discovery);
+                        setSelectedPaths(draft.discovery.selectedPaths || draft.discovery.readablePaths || []);
                         setUrl(repoURL(draft.discovery.source));
                         setBranch(draft.discovery.source.branch);
                         setRoot(draft.discovery.source.root);
@@ -899,7 +906,7 @@ export default function App() {
                   />
                 </label>
                 <label>
-                  Book folder
+                  Source folder <span className="muted">(blank scans repository root)</span>
                   <input
                     value={root}
                     disabled={busy}
@@ -931,7 +938,7 @@ export default function App() {
                 <h3>{preview.title}</h3>
                 {preview.description && <p>{preview.description}</p>}
                 <div className="preview-facts">
-                  <span>{preview.chapterPaths.length} chapters</span>
+                  <span>{preview.chapterPaths.length} readable files</span>
                   <span>{preview.volumes} volumes</span>
                   <span>≈ {formatBytes(preview.bytes)}</span>
                 </div>
@@ -942,6 +949,19 @@ export default function App() {
                   Snapshot {preview.commit.slice(0, 7)}
                 </p>
               </div>
+              {preview.generalLayout && (
+                <fieldset className="import-file-list">
+                  <legend>Files to include</legend>
+                  {Array.from(new Set((preview.readablePaths || []).map(path => path.split("/").slice(0, -1).join("/") || "Repository root"))).map(folder => {
+                    const paths = (preview.readablePaths || []).filter(path => (path.split("/").slice(0, -1).join("/") || "Repository root") === folder);
+                    const all = paths.every(path => selectedPaths.includes(path));
+                    return <div key={folder} className="import-file-folder">
+                      <label><input type="checkbox" checked={all} disabled={busy} onChange={() => setSelectedPaths(current => all ? current.filter(path => !paths.includes(path)) : [...new Set([...current, ...paths])])} /> <strong>{folder}</strong></label>
+                      {paths.map(path => <label key={path} className="import-file"><input type="checkbox" checked={selectedPaths.includes(path)} disabled={busy} onChange={() => setSelectedPaths(current => current.includes(path) ? current.filter(p => p !== path) : [...current, path])} />{path.split("/").at(-1)}</label>)}
+                    </div>;
+                  })}
+                </fieldset>
+              )}
               {transfer ? (
                 <div className="transfer-status" role="status">
                   <span>{transfer.label}</span>
@@ -963,7 +983,7 @@ export default function App() {
               <div className="button-row">
                 <button
                   className="button primary grow"
-                  disabled={busy || !online}
+                  disabled={busy || !online || (!!preview.generalLayout && selectedPaths.length === 0)}
                   onClick={() => {
                     void download(preview);
                   }}
@@ -1100,7 +1120,7 @@ export default function App() {
         <Modal
           title="Your library, your device"
           onClose={() => {
-            setGithubTokenInput("");
+            setGitHubTokenInput("");
             setSettingsOpen(false);
           }}
         >
@@ -1186,7 +1206,7 @@ export default function App() {
                     void removeGitHubToken()
                       .then(() => {
                         setGitHubToken("");
-                        setGithubTokenInput("");
+                        setGitHubTokenInput("");
                         notify("GitHub token removed from this device.");
                       })
                       .catch(() =>

@@ -16,6 +16,9 @@ export interface Chapter {
   markdown: string;
   plainText: string;
   blobSha: string;
+  collectionPath?: string;
+  format?: "markdown" | "text";
+  collectionDescription?: string;
 }
 
 export interface Asset {
@@ -46,6 +49,8 @@ export interface Book {
   issues: Issue[];
   downloadedAt: string;
   bytes: number;
+  selectedPaths?: string[];
+  generalLayout?: boolean;
 }
 
 export interface Location {
@@ -136,6 +141,9 @@ export interface Discovery {
   volumes: number;
   bytes: number;
   index: string;
+  generalLayout?: boolean;
+  readablePaths?: string[];
+  selectedPaths?: string[];
 }
 export interface Draft {
   id: string;
