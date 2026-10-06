@@ -142,7 +142,7 @@ export async function latestCommit(
 export async function discover(
   url: string,
   branch = "",
-  root = "book",
+  root = "",
   signal?: AbortSignal,
   token = "",
 ): Promise<Discovery> {

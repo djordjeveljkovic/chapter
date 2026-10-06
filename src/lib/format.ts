@@ -68,7 +68,7 @@ export function normalizeRoot(root: string): string {
     clean.includes("\\") ||
     clean.split("/").some((p) => p === ".." || p === "." || !p)
   )
-    throw new Error("Enter a repository-relative book folder, such as book.");
+    throw new Error("Leave the source folder blank to scan the repository root, or enter a repository-relative folder such as book.");
   return clean;
 }
 

@@ -33,7 +33,7 @@ export default function Authoring({
   const [copied, setCopied] = useState(false);
   const [url, setUrl] = useState("");
   const [branch, setBranch] = useState("");
-  const [root, setRoot] = useState("book");
+  const [root, setRoot] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const [issues, setIssues] = useState<Issue[] | null>(null);
