@@ -119,7 +119,7 @@ function numeric(value: unknown, fallback: number): number {
 
 export function isChapter(path: string, root: string): boolean {
   return (
-    path.startsWith(`${root}/volumes/`) &&
+    path.startsWith(`${root ? `${root}/` : ""}volumes/`) &&
     /\.md$/i.test(path) &&
     !/(^|\/)README\.md$/i.test(path) &&
     !path.split("/").some((part) => part.startsWith("_"))
@@ -347,7 +347,7 @@ export function validateDocuments(
   const known = new Set(entries.map((e) => e.path));
   const identities = new Set<string>();
   const numbers = new Set<string>();
-  if (!documents[`${root}/README.md`])
+  if (!documents[`${root ? `${root}/` : ""}README.md`])
     issues.push({
       severity: "error",
       path: root,

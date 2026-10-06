@@ -113,6 +113,31 @@ afterEach(() => {
 });
 
 describe("GitHub failure and branch contract", () => {
+  it("automatically recognizes the conventional book folder when the folder is blank", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.endsWith("/repos/author/audit")) return Response.json({ default_branch: "main", private: false, description: "" });
+      if (url.includes("/commits/")) return Response.json({ sha: commit });
+      if (url.includes("/git/trees/")) return Response.json({ tree: entries, truncated: false });
+      return new Response("# Audit");
+    }));
+    const snapshot = await discover("https://github.com/author/audit", "", "");
+    expect(snapshot.source.root).toBe("book");
+    expect(snapshot.generalLayout).toBe(false);
+    expect(snapshot.chapterPaths).toEqual([chapterPath]);
+  });
+  it("recognizes a book whose volumes and README are at repository root", async () => {
+    const rootEntries = entries.map(entry => ({ ...entry, path: entry.path.replace(/^book\//, "") }));
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.endsWith("/repos/author/audit")) return Response.json({ default_branch: "main", private: false, description: "" });
+      if (url.includes("/commits/")) return Response.json({ sha: commit });
+      if (url.includes("/git/trees/")) return Response.json({ tree: rootEntries, truncated: false });
+      return new Response("# Audit");
+    }));
+    const snapshot = await discover("https://github.com/author/audit", "", "");
+    expect(snapshot.source.root).toBe("");
+    expect(snapshot.generalLayout).toBe(false);
+    expect(snapshot.chapterPaths).toEqual(["volumes/01-one/001-one.md"]);
+  });
   it.each([
     [404, "could not find", 1],
     [403, "limited requests", 1],

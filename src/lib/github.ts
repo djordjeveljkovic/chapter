@@ -154,7 +154,7 @@ export async function discover(
   }>(endpoint(repo), signal, token);
   if (metadata.private && !token)
     throw new Error("Private repositories require a saved GitHub token with Contents read permission; public repositories need no token.");
-  const source: Source = {
+  let source: Source = {
     ...repo,
     branch: branch.trim() || metadata.default_branch,
     root: normalizeRoot(root),
@@ -170,6 +170,14 @@ export async function discover(
       "This repository is too large for a complete GitHub tree response. Put the book in a smaller dedicated repository.",
     );
   const entries = tree.tree.filter((e) => e.type === "blob");
+  // Prefer a formatted book at the repository root; otherwise detect the
+  // conventional book/ subfolder without requiring the reader to enter it.
+  if (
+    !source.root &&
+    !(entries.some((entry) => entry.path === "README.md") && entries.some((entry) => isChapter(entry.path, ""))) &&
+    entries.some((entry) => entry.path === "book/README.md") &&
+    entries.some((entry) => isChapter(entry.path, "book"))
+  ) source = { ...source, root: "book" };
   const prefix = source.root ? `${source.root}/` : "";
   const chapterEntries = entries.filter((e) => isChapter(e.path, source.root));
   const recognized = chapterEntries.length > 0 && entries.some((e) => e.path === `${prefix}README.md`);
