@@ -16,18 +16,22 @@ interface ReaderDB extends DBSchema {
   reading: { key: string; value: ReadingState };
   updates: { key: string; value: UpdateStatus };
   settings: { key: string; value: Preferences | Brief };
+  credentials: { key: string; value: string };
 }
 export const db = () =>
-  openDB<ReaderDB>("chapter-library", 1, {
-    upgrade(database) {
-      for (const name of [
-        "books",
-        "drafts",
-        "reading",
-        "updates",
-        "settings",
-      ] as const)
-        database.createObjectStore(name);
+  openDB<ReaderDB>("chapter-library", 2, {
+    upgrade(database, oldVersion) {
+      if (oldVersion < 1) {
+        for (const name of [
+          "books",
+          "drafts",
+          "reading",
+          "updates",
+          "settings",
+        ] as const)
+          database.createObjectStore(name);
+      }
+      if (oldVersion < 2) database.createObjectStore("credentials");
     },
   });
 export async function listBooks() {
@@ -110,4 +114,13 @@ export async function loadUpdates() {
 }
 export async function saveUpdate(update: UpdateStatus) {
   await (await db()).put("updates", update, update.bookId);
+}
+export async function loadGitHubToken() {
+  return (await (await db()).get("credentials", "github")) || "";
+}
+export async function saveGitHubToken(token: string) {
+  await (await db()).put("credentials", token, "github");
+}
+export async function removeGitHubToken() {
+  await (await db()).delete("credentials", "github");
 }

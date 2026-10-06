@@ -1,10 +1,10 @@
 {
-  "builtAt": "2026-09-30T04:52:06.744Z",
+  "builtAt": "2026-10-06T23:05:11.641Z",
   "scope": "/",
   "archive": "chapter-site.zip",
-  "sha256": "a7c1094a197a87ea1804eb822ce5f4d99f055583eb96d9c14f1b0dd5c1b1742c",
+  "sha256": "95eb034c293f02fe66bd525f7fb0b46f945fbf43ea0f4f2780cd82d5f7ab7449",
   "files": [
-    "_astro/App.BOeKMGF8.js",
+    "_astro/App.BthTb88u.js",
     "_astro/Layout.B2ZT_45t.css",
     "_astro/client.CXM7gXZ1.js",
     "_astro/react.yIOJJ3r4.js",

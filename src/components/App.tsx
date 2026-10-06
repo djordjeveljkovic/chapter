@@ -46,11 +46,14 @@ import {
   discardDraft,
   listBooks,
   listDrafts,
+  loadGitHubToken,
   loadPreferences,
   loadReading,
   loadUpdates,
   removeBook,
+  removeGitHubToken,
   saveBook,
+  saveGitHubToken,
   savePreferences,
   saveUpdate,
 } from "../lib/storage";
@@ -95,6 +98,8 @@ export default function App() {
   const [states, setStates] = useState<Record<string, ReadingState>>({});
   const [updates, setUpdates] = useState<Record<string, UpdateStatus>>({});
   const [preferences, setPreferences] = useState(defaultPreferences);
+  const [githubToken, setGitHubToken] = useState("");
+  const [githubTokenInput, setGitHubTokenInput] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [online, setOnline] = useState(true);
   const [shellReady, setShellReady] = useState(false);
@@ -172,7 +177,11 @@ export default function App() {
   useEffect(() => {
     setRoute(route());
     setOnline(navigator.onLine);
-    void Promise.all([reload(), loadPreferences().then(setPreferences)])
+    void Promise.all([
+      reload(),
+      loadPreferences().then(setPreferences),
+      loadGitHubToken().then(setGitHubToken),
+    ])
       .catch(() =>
         notify(
           "Local storage is unavailable. Allow site storage in your browser to save books.",
@@ -235,7 +244,7 @@ export default function App() {
       try {
         status = {
           bookId: book.id,
-          latestCommit: await latestCommit(book.source),
+          latestCommit: await latestCommit(book.source, undefined, githubToken),
           checkedAt: new Date().toISOString(),
           attemptedAt,
         };
@@ -263,7 +272,7 @@ export default function App() {
         checking.current.delete(book.id);
       }
     },
-    [updates, notify],
+    [updates, notify, githubToken],
   );
   useEffect(() => {
     if (loaded && online)
@@ -291,7 +300,13 @@ export default function App() {
     setPreview(null);
     setImportIssues([]);
     try {
-      const snapshot = await discover(url, branch, root, controller.signal);
+      const snapshot = await discover(
+        url,
+        branch,
+        root,
+        controller.signal,
+        githubToken,
+      );
       if (!controller.signal.aborted) setPreview(snapshot);
     } catch (error) {
       if ((error as Error).name !== "AbortError")
@@ -322,6 +337,8 @@ export default function App() {
         },
         controller.signal,
         books.find((b) => b.id === snapshot.id),
+        true,
+        githubToken,
       );
       if (import.meta.env.PROD && !(await verifyOfflineShell()))
         throw new Error(
@@ -414,6 +431,7 @@ export default function App() {
         book.source.branch,
         book.source.root,
         controller.signal,
+        githubToken,
       );
       if (!controller.signal.aborted) setPreview(snapshot);
     } catch (error) {
@@ -538,7 +556,7 @@ export default function App() {
                 </span>
                 <span>
                   <ShieldCheck size={15} />
-                  No account needed
+                  Public books need no login
                 </span>
               </div>
             </div>
@@ -849,8 +867,8 @@ export default function App() {
           onClose={closeImport}
         >
           <p className="muted">
-            Public Markdown books, saved here for the moments without a
-            connection.
+            Public books need no token. For private books, save a read-only
+            fine-grained token in Library settings.
           </p>
           {!preview ? (
             <form
@@ -903,7 +921,7 @@ export default function App() {
               <p className="small muted">
                 Supports the{" "}
                 <a href={`${base}format/`}>compatible book format</a>. No GitHub
-                login needed.
+                login is needed for public repositories.
               </p>
             </form>
           ) : (
@@ -1081,7 +1099,10 @@ export default function App() {
       {settingsOpen && (
         <Modal
           title="Your library, your device"
-          onClose={() => setSettingsOpen(false)}
+          onClose={() => {
+            setGithubTokenInput("");
+            setSettingsOpen(false);
+          }}
         >
           <div className="storage-summary">
             <HardDrive size={24} />
@@ -1101,6 +1122,88 @@ export default function App() {
               </p>
             </div>
           </div>
+          <h3>Private repositories</h3>
+          <p className="muted">
+            Save a fine-grained GitHub token to read private books. Limit it to
+            the repositories you need and grant <strong>Contents: read</strong>
+            only. GitHub grants repository metadata access automatically. The
+            token stays in this browser, is sent only to GitHub, and is not
+            included in library backups. Code running on this site can access
+            it, so use a narrowly scoped token.
+          </p>
+          <p className="small muted">
+            Create one at{" "}
+            <a
+              href="https://github.com/settings/personal-access-tokens/new"
+              target="_blank"
+              rel="noreferrer"
+            >
+              GitHub fine-grained tokens
+            </a>
+            . Select the repositories Chapter should read and set Contents to
+            read-only.
+          </p>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const token = githubTokenInput.trim();
+              if (!token) return;
+              void saveGitHubToken(token)
+                .then(() => {
+                  setGitHubToken(token);
+                  setGitHubTokenInput("");
+                  notify("GitHub token saved on this device.");
+                })
+                .catch(() => notify("Could not save the GitHub token.", true));
+            }}
+          >
+            <label>
+              Fine-grained access token
+              <input
+                type="password"
+                autoComplete="new-password"
+                spellCheck={false}
+                value={githubTokenInput}
+                placeholder={
+                  githubToken ? "Enter a replacement token" : "github_pat_…"
+                }
+                onChange={(event) => setGitHubTokenInput(event.target.value)}
+              />
+            </label>
+            <div className="button-row">
+              <button
+                className="button secondary"
+                type="submit"
+                disabled={!githubTokenInput.trim()}
+              >
+                Save token
+              </button>
+              {githubToken && (
+                <button
+                  className="text-button danger"
+                  type="button"
+                  onClick={() => {
+                    void removeGitHubToken()
+                      .then(() => {
+                        setGitHubToken("");
+                        setGithubTokenInput("");
+                        notify("GitHub token removed from this device.");
+                      })
+                      .catch(() =>
+                        notify("Could not remove the GitHub token.", true),
+                      );
+                  }}
+                >
+                  Remove saved token
+                </button>
+              )}
+            </div>
+            <p className="small muted">
+              {githubToken
+                ? "A token is saved in this browser. Replace or remove it here."
+                : "No token is saved. Public repositories remain available without one."}
+            </p>
+          </form>
           <h3>Keep a copy</h3>
           <p className="muted">
             Export downloaded books, bookmarks, notes, progress, and

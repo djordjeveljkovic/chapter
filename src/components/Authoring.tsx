@@ -9,7 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { defaultBrief, type Brief, type Issue } from "../lib/types";
-import { loadBrief, saveBrief } from "../lib/storage";
+import { loadBrief, loadGitHubToken, saveBrief } from "../lib/storage";
 import {
   promptFor,
   promptStages,
@@ -83,11 +83,13 @@ export default function Authoring({
     setIssues(null);
     setResult("");
     try {
+      const token = await loadGitHubToken();
       const discovery = await discover(
         url,
         branch,
         root,
         controller.current.signal,
+        token,
       );
       const book = await prepareBook(
         discovery,
@@ -95,6 +97,7 @@ export default function Authoring({
         controller.current.signal,
         undefined,
         false,
+        token,
       );
       setIssues(book.issues);
       setResult(
@@ -282,8 +285,9 @@ export default function Authoring({
           <h2>Check your published book</h2>
         </div>
         <p className="muted">
-          Publish the repository publicly on GitHub, then check its chapter
-          metadata, order, links, and offline images.
+          Check chapter metadata, order, links, and offline images. Public
+          repositories work without a token; for private repositories, save a
+          fine-grained token in Library settings first.
         </p>
         <form
           onSubmit={(e) => {

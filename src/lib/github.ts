@@ -26,17 +26,41 @@ const rawURL = (source: Source, commit: string, path: string) =>
   `https://raw.githubusercontent.com/${source.owner}/${source.repo}/${commit}/${path.split("/").map(encodeURIComponent).join("/")}`;
 const endpoint = (source: Pick<Source, "owner" | "repo">) =>
   `${API}/repos/${source.owner}/${source.repo}`;
+const blobURL = (source: Pick<Source, "owner" | "repo">, sha: string) =>
+  `${endpoint(source)}/git/blobs/${encodeURIComponent(sha)}`;
 
-async function response(url: string, signal?: AbortSignal): Promise<Response> {
+async function response(
+  url: string,
+  signal?: AbortSignal,
+  token = "",
+  accept?: string,
+): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
     try {
+      const headers = new Headers();
+      if (accept) headers.set("Accept", accept);
+      // Never send a GitHub credential to raw.githubusercontent.com or any other host.
+      if (token && new URL(url).origin === API) {
+        headers.set("Authorization", `Bearer ${token}`);
+        headers.set("Accept", accept || "application/vnd.github+json");
+      }
       const res = await fetch(url, {
+        headers,
         signal: signal
           ? AbortSignal.any([signal, AbortSignal.timeout(30000)])
           : AbortSignal.timeout(30000),
       });
       if (res.ok) return res;
+      if (res.status === 401 && token)
+        throw new Error(
+          "GitHub rejected the saved access token. Replace it in Library settings, then try again.",
+        );
       if (res.status === 403 || res.status === 429) {
+        const remaining = res.headers.get("x-ratelimit-remaining");
+        if (token && res.status === 403 && remaining !== "0")
+          throw new Error(
+            "GitHub denied access. Check that this fine-grained token includes the repository and has Contents read permission.",
+          );
         const reset = res.headers.get("x-ratelimit-reset");
         throw new Error(
           `GitHub temporarily limited requests.${reset ? ` Try again after ${new Date(Number(reset) * 1000).toLocaleTimeString()}.` : " Try again later."} Your saved books remain available.`,
@@ -44,7 +68,9 @@ async function response(url: string, signal?: AbortSignal): Promise<Response> {
       }
       if (res.status === 404)
         throw new Error(
-          "GitHub could not find this public repository, branch, or file. Check the URL and branch.",
+          token
+            ? "GitHub could not find this repository, branch, or file, or the saved token cannot access it. Check the URL, branch, selected repositories, and Contents read permission."
+            : "GitHub could not find this public repository, branch, or file. If it is private, save a fine-grained token with Contents read permission in Library settings.",
         );
       if (res.status >= 500 && attempt < 2) continue;
       throw new Error(
@@ -74,14 +100,40 @@ async function response(url: string, signal?: AbortSignal): Promise<Response> {
   }
 }
 
-async function json<T>(url: string, signal?: AbortSignal): Promise<T> {
-  return (await response(url, signal)).json() as Promise<T>;
+async function json<T>(
+  url: string,
+  signal?: AbortSignal,
+  token = "",
+): Promise<T> {
+  return (await response(url, signal, token)).json() as Promise<T>;
 }
 
-export async function latestCommit(source: Source, signal?: AbortSignal) {
+async function readFile(
+  source: Source,
+  commit: string,
+  entry: TreeEntry,
+  signal?: AbortSignal,
+  token = "",
+) {
+  if (token)
+    return response(
+      blobURL(source, entry.sha),
+      signal,
+      token,
+      "application/vnd.github.raw+json",
+    );
+  return response(rawURL(source, commit, entry.path), signal);
+}
+
+export async function latestCommit(
+  source: Source,
+  signal?: AbortSignal,
+  token = "",
+) {
   const data = await json<{ sha: string }>(
     `${endpoint(source)}/commits/${encodeURIComponent(source.branch)}`,
     signal,
+    token,
   );
   return data.sha;
 }
@@ -91,24 +143,24 @@ export async function discover(
   branch = "",
   root = "book",
   signal?: AbortSignal,
+  token = "",
 ): Promise<Discovery> {
   const repo = parseRepoUrl(url);
   const metadata = await json<{
     default_branch: string;
     description: string;
     private: boolean;
-  }>(endpoint(repo), signal);
-  if (metadata.private)
-    throw new Error("This version supports public repositories only.");
+  }>(endpoint(repo), signal, token);
   const source: Source = {
     ...repo,
     branch: branch.trim() || metadata.default_branch,
     root: normalizeRoot(root),
   };
-  const commit = await latestCommit(source, signal);
+  const commit = await latestCommit(source, signal, token);
   const tree = await json<{ tree: TreeEntry[]; truncated: boolean }>(
     `${endpoint(source)}/git/trees/${commit}?recursive=1`,
     signal,
+    token,
   );
   if (tree.truncated)
     throw new Error(
@@ -124,8 +176,11 @@ export async function discover(
       `No compatible book found in ${source.root}/. It needs README.md and Markdown chapters under volumes/. See the Book format guide.`,
     );
   }
+  const indexEntry = entries.find(
+    (entry) => entry.path === `${source.root}/README.md`,
+  )!;
   const index = await (
-    await response(rawURL(source, commit, `${source.root}/README.md`), signal)
+    await readFile(source, commit, indexEntry, signal, token)
   ).text();
   const indexDocument = frontMatter(index);
   const title =
@@ -160,6 +215,7 @@ export async function prepareBook(
   signal: AbortSignal,
   previous?: Book,
   persist = true,
+  token = "",
 ): Promise<Book> {
   const cached = persist ? await loadDraft(discovery.id) : undefined;
   const draft: Draft =
@@ -201,10 +257,7 @@ export async function prepareBook(
     const results = await Promise.allSettled(
       pending.slice(start, start + 6).map(async (entry) => {
         draft.documents[entry.path] = await (
-          await response(
-            rawURL(discovery.source, discovery.commit, entry.path),
-            signal,
-          )
+          await readFile(discovery.source, discovery.commit, entry, signal, token)
         ).text();
       }),
     );
@@ -265,9 +318,12 @@ export async function prepareBook(
           data: bytesToBase64(
             new Uint8Array(
               await (
-                await response(
-                  rawURL(discovery.source, discovery.commit, path),
+                await readFile(
+                  discovery.source,
+                  discovery.commit,
+                  entry,
                   signal,
+                  token,
                 )
               ).arrayBuffer(),
             ),

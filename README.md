@@ -1,6 +1,6 @@
 # Chapter
 
-A quiet, mobile-first library for Markdown books on GitHub. Import a public repository, download a complete edition, and read it offline. Built with Astro, TypeScript, and React. Uses Bun for dependency installation and project commands.
+A quiet, mobile-first library for Markdown books on GitHub. Import a public repository or use a locally saved fine-grained token for private repositories, download a complete edition, and read it offline. Built with Astro, TypeScript, and React. Uses Bun for dependency installation and project commands.
 
 ## Run locally
 
@@ -22,7 +22,7 @@ Open the production preview while online and wait for **Offline app ready**. Imp
 
 ## What is included
 
-- Public GitHub import with a branch choice, preview, commit-pinned downloads, metadata/link checks, local images, download pause/resume, and staged updates.
+- Public GitHub import without login, plus private GitHub import using an optional fine-grained token saved in this browser. Both support branch choice, preview, commit-pinned downloads, metadata/link checks, local images, download pause/resume, and staged updates.
 - Whole-book offline reading, scroll and paged modes, themes, typography, chapter navigation, search, text-position resume, bookmarks, passage notes, and chapter completion.
 - Update information showing the saved and latest checked GitHub commits, with the last successful check time. Automatic checks run at most once an hour per book; applying updates requires a user action.
 - Versioned backup export/import, storage information, book removal, and an installable app shell.
@@ -77,7 +77,7 @@ Use Markdown links and repository-local images. Raw HTML is displayed as text; J
 
 Astro renders the application shell and `/format/` documentation. A browser-only React island handles the library, reader, and authoring workflow. Hash navigation keeps book/chapter URLs compatible with static hosts and offline reopening.
 
-IndexedDB stores books, chapter Markdown, image data, reading state, update checks, preferences, authoring briefs, and paused downloads. Imports resolve one Git commit before reading files. Updated editions reuse unchanged chapter/image blobs, stage missing content, then atomically switch the book and migrated reading data after successful validation and offline-shell verification. Removed-chapter bookmarks remain visible.
+IndexedDB stores books, chapter Markdown, image data, reading state, update checks, preferences, authoring briefs, paused downloads, and an optional GitHub token. The token is stored only in this browser and is excluded from library backups; code running on this site can access it, so use a fine-grained token limited to selected repositories with Contents read permission. Imports resolve one Git commit before reading files. Authenticated files are read by Git blob SHA through the GitHub REST API; public files continue to use the raw content host. Updated editions reuse unchanged chapter/image blobs, stage missing content, then atomically switch the book and migrated reading data after successful validation and offline-shell verification. Removed-chapter bookmarks remain visible.
 
 The post-build script generates icons, a web manifest, and a service worker that precaches the compiled app, assets, and documentation. GitHub requests are not cached by the service worker. New app builds wait for an explicit reload; activating a new build removes obsolete app caches without changing IndexedDB books.
 
@@ -105,7 +105,7 @@ Android-sized Chromium tests exercise phone layout and offline browser behavior.
 
 ## Deploy
 
-Deploy `dist/` to an HTTPS static host. No backend, database server, API secret, or AI key is required. Keep `sw.js` and HTML revalidated; compiled hashed assets can be cached long-term.
+Deploy `dist/` to an HTTPS static host. No backend, database server, shared GitHub secret, or AI key is required. Private repository access uses an optional fine-grained token supplied by each reader and stored in their browser. Keep `sw.js` and HTML revalidated; compiled hashed assets can be cached long-term.
 
 ### GitHub Pages
 
