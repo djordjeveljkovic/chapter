@@ -75,6 +75,7 @@ export default function Modal({
           <h2>{title}</h2>
           <button
             className="icon-button"
+            type="button"
             onClick={onClose}
             aria-label="Close dialog"
           >

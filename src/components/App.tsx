@@ -480,7 +480,10 @@ export default function App() {
             </nav>
             <button
               className="icon-button library-settings"
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => {
+                setGitHubTokenInput("");
+                setSettingsOpen(true);
+              }}
               aria-label="Library settings"
             >
               <Settings2 size={20} />
@@ -843,7 +846,10 @@ export default function App() {
               </p>
               <button
                 className="text-button"
-                onClick={() => setSettingsOpen(true)}
+                onClick={() => {
+                  setGitHubTokenInput("");
+                  setSettingsOpen(true);
+                }}
               >
                 Manage your library
                 <ArrowRight size={16} />
@@ -1119,10 +1125,7 @@ export default function App() {
       {settingsOpen && (
         <Modal
           title="Your library, your device"
-          onClose={() => {
-            setGitHubTokenInput("");
-            setSettingsOpen(false);
-          }}
+          onClose={() => setSettingsOpen(false)}
         >
           <div className="storage-summary">
             <HardDrive size={24} />
