@@ -138,6 +138,19 @@ describe("GitHub failure and branch contract", () => {
     expect(snapshot.generalLayout).toBe(false);
     expect(snapshot.chapterPaths).toEqual(["volumes/01-one/001-one.md"]);
   });
+  it("includes readable files in underscore-prefixed general repository folders", async () => {
+    const repositoryEntries = ["README.md", "00-BRIEF.md", "_coordination/DECISIONS.md", "_reports/review.rst"].map(path => ({ path, type: "blob", sha: commit, size: 10 }));
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.endsWith("/repos/author/audit")) return Response.json({ default_branch: "main", private: false, description: "" });
+      if (url.includes("/commits/")) return Response.json({ sha: commit });
+      if (url.includes("/git/trees/")) return Response.json({ tree: repositoryEntries, truncated: false });
+      return new Response("# Audit");
+    }));
+    const snapshot = await discover("https://github.com/author/audit", "", "");
+    expect(snapshot.generalLayout).toBe(true);
+    expect(snapshot.readablePaths).toContain("_coordination/DECISIONS.md");
+    expect(snapshot.readablePaths).toContain("_reports/review.rst");
+  });
   it.each([
     [404, "could not find", 1],
     [403, "limited requests", 1],

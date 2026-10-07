@@ -181,7 +181,7 @@ export async function discover(
   const prefix = source.root ? `${source.root}/` : "";
   const chapterEntries = entries.filter((e) => isChapter(e.path, source.root));
   const recognized = chapterEntries.length > 0 && entries.some((e) => e.path === `${prefix}README.md`);
-  const readableEntries = entries.filter((e) => e.path.startsWith(prefix) && /\.(md|markdown|txt|rst)$/i.test(e.path) && !/(^|\/)README\.(md|markdown|txt|rst)$/i.test(e.path) && !e.path.split("/").some((part) => part.startsWith("_")));
+  const readableEntries = entries.filter((e) => e.path.startsWith(prefix) && /\.(md|markdown|txt|rst)$/i.test(e.path) && !/(^|\/)README\.(md|markdown|txt|rst)$/i.test(e.path));
   if (!recognized && !readableEntries.length) {
     throw new Error(
       `No readable Markdown, text, or RST files found in ${source.root || "repository root"}.`,
@@ -209,7 +209,7 @@ export async function discover(
     bytes: entries
       .filter(
         (e) =>
-          e.path.startsWith(source.root ? `${source.root}/` : "") && !e.path.includes("/_ai/"),
+          e.path.startsWith(source.root ? `${source.root}/` : "") && (recognized || !e.path.includes("/_ai/")),
       )
       .reduce((sum, e) => sum + (e.size || 0), 0),
     index,
@@ -243,7 +243,7 @@ export async function prepareBook(
     (e) =>
       e.path.startsWith(discovery.source.root ? `${discovery.source.root}/` : "") &&
       (discovery.generalLayout ? ((discovery.selectedPaths || discovery.readablePaths || []).includes(e.path) || /(^|\/)README\.(md|markdown|txt|rst)$/i.test(e.path)) : /\.md$/i.test(e.path)) &&
-      !e.path.includes("/_ai/"),
+      (discovery.generalLayout || !e.path.includes("/_ai/")),
   );
   for (const entry of wanted) {
     if (draft.documents[entry.path] !== undefined) continue;
